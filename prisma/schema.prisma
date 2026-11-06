@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                  String        @id @default(cuid())
+  email               String        @unique
+  passwordHash        String
+  emailVerifiedAt     DateTime?
+  mfaSecretCiphertext String?
+  mfaEnabled          Boolean       @default(false)
+  expenses            Expense[]
+  accountTokens       AccountToken[]
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+}
+
+model AccountToken {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  type      String
+  expiresAt DateTime
+  usedAt    DateTime?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId, type, expiresAt])
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amountCents Int
+  category    String
+  description String
+  spentAt     DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([userId, spentAt])
+}

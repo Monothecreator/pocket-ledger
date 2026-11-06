@@ -1,0 +1,59 @@
+name: Pocket Ledger security
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-secret-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run test
+      - run: npm audit --omit=dev
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  arko-gate:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ARKO_API_TOKEN: ${{ secrets.ARKO_API_TOKEN }}
+      ARKO_BLOCKING: ${{ vars.ARKO_BLOCKING || 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Run Arko gate (report only by default)
+        shell: bash
+        run: |
+          set +e
+          npx -y arko-mcp@latest gate
+          arko_status=$?
+          echo "Arko gate exit status: $arko_status"
+
+          if [[ "$ARKO_BLOCKING" == "true" && "$arko_status" -ne 0 ]]; then
+            echo "Arko blocking is enabled; failing this check."
+            exit "$arko_status"
+          fi
+
+          echo "Arko blocking is disabled; completing in report-only mode."
+          exit 0

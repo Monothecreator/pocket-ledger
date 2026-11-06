@@ -25,7 +25,8 @@ export default function ExpenseDashboard() {
   async function add(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const dollars = Number(form.get("amount"));
     const cents = Math.round(dollars * 100);
     const response = await fetch("/api/expenses", {
@@ -39,7 +40,7 @@ export default function ExpenseDashboard() {
       }),
     });
     if (!response.ok) return setError("Unable to add expense");
-    event.currentTarget.reset();
+    formElement.reset();
     await load();
   }
 
